@@ -77,7 +77,6 @@ src/main/java/com/haduy/ecommerce/
    $env:DB_PASSWORD="mat_khau_mysql_cua_ban"
    $env:JWT_SECRET="mot_chuoi_bi_mat_du_dai_de_ky_jwt"
    ```
-   > `application.properties` đọc 2 giá trị này qua `${DB_PASSWORD}` và `${JWT_SECRET}` nên không có thông tin nhạy cảm nào nằm trong mã nguồn.
 
 3. Chạy ứng dụng:
    ```bash
