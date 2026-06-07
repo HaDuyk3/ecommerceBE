@@ -1,0 +1,7 @@
+# Copy this file to application-local.properties in the same folder.
+# application-local.properties is gitignored — do not commit it.
+
+spring.datasource.password=your_mysql_password
+
+# Optional: override dev JWT key (Base64, at least 256 bits when decoded)
+# jwt.secret=your_base64_secret_here

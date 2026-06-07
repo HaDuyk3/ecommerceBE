@@ -1,8 +1,8 @@
 package com.haduy.ecommerce.promotion.repository;
 
-import com.haduy.ecommerce.common.enums.PromotionStatus;
 import com.haduy.ecommerce.promotion.entity.Promotion;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -11,7 +11,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
+public interface PromotionRepository extends JpaRepository<Promotion, UUID>,
+        JpaSpecificationExecutor<Promotion> {
 
     @Query("SELECT p FROM Promotion p WHERE p.sellerProduct.id = :sellerProductId " +
             "AND p.status = 'ACTIVE' " +
@@ -27,6 +28,4 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID> {
             @Param("sellerProductId") UUID sellerProductId,
             @Param("startAt") Instant startAt,
             @Param("endAt") Instant endAt);
-
-    List<Promotion> findBySellerProductSellerUserId(UUID userId);
 }

@@ -30,10 +30,13 @@ public class PaymentController {
                 paymentService.createPayment(userDetails.getId(), request)));
     }
 
+    /**
+     * Dev/simulation only — no gateway signature. Replace with verified webhook
+     * when integrating VNPAY/MoMo (or similar).
+     */
     @PostMapping("/callback")
     public ResponseEntity<ApiResponse<PaymentDto>> callback(
             @Valid @RequestBody PaymentCallbackRequest request) {
-        // Endpoint này được gọi từ payment gateway webhook
         return ResponseEntity.ok(ApiResponse.success(
                 paymentService.verifyCallback(request)));
     }

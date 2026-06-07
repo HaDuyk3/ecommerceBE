@@ -5,12 +5,15 @@ import com.haduy.ecommerce.common.exception.BusinessException;
 import com.haduy.ecommerce.common.exception.ErrorCode;
 import com.haduy.ecommerce.product.dto.ProductDto;
 import com.haduy.ecommerce.product.dto.ProductRequest;
+import com.haduy.ecommerce.product.dto.ProductSearchCriteria;
 import com.haduy.ecommerce.product.entity.Category;
 import com.haduy.ecommerce.product.entity.Product;
 import com.haduy.ecommerce.product.repository.ProductRepository;
+import com.haduy.ecommerce.product.spec.ProductSpecifications;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,17 +27,28 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryService categoryService;
 
-    public Page<ProductDto> search(String keyword, UUID categoryId, Pageable pageable) {
-        if (keyword != null && !keyword.isBlank()) {
-            return productRepository.searchByKeyword(keyword, ProductStatus.APPROVED, pageable)
-                    .map(ProductDto::from);
-        }
-        if (categoryId != null) {
-            return productRepository.findByCategoryIdAndStatus(categoryId, ProductStatus.APPROVED, pageable)
-                    .map(ProductDto::from);
-        }
-        return productRepository.findByStatus(ProductStatus.APPROVED, pageable)
-                .map(ProductDto::from);
+    public Page<ProductDto> searchPublic(ProductSearchCriteria criteria, Pageable pageable) {
+        return search(criteria, pageable, ProductStatus.APPROVED);
+    }
+
+    public Page<ProductDto> searchAdmin(ProductSearchCriteria criteria, Pageable pageable) {
+        return search(criteria, pageable, criteria.getStatus());
+    }
+
+    private Page<ProductDto> search(ProductSearchCriteria criteria, Pageable pageable, ProductStatus status) {
+        ProductSearchCriteria effective = ProductSearchCriteria.builder()
+                .keyword(criteria.getKeyword())
+                .categoryId(criteria.getCategoryId())
+                .brand(criteria.getBrand())
+                .minPrice(criteria.getMinPrice())
+                .maxPrice(criteria.getMaxPrice())
+                .minRating(criteria.getMinRating())
+                .inStock(criteria.getInStock())
+                .status(status)
+                .build();
+
+        Specification<Product> spec = ProductSpecifications.from(effective);
+        return productRepository.findAll(spec, pageable).map(ProductDto::from);
     }
 
     public ProductDto getById(UUID id) {

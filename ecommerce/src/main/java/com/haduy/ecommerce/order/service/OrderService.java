@@ -23,6 +23,11 @@ import com.haduy.ecommerce.user.entity.User;
 import com.haduy.ecommerce.user.repository.UserAddressRepository;
 import com.haduy.ecommerce.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+import com.haduy.ecommerce.order.dto.OrderSearchCriteria;
+import com.haduy.ecommerce.order.spec.OrderSpecifications;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -126,11 +131,23 @@ public class OrderService {
         return OrderDto.from(saved);
     }
 
-    public List<OrderDto> getMyOrders(UUID userId) {
-        return orderRepository.findByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(OrderDto::from)
-                .toList();
+    public Page<OrderDto> searchMyOrders(UUID userId, OrderSearchCriteria criteria, Pageable pageable) {
+        OrderSearchCriteria effective = OrderSearchCriteria.builder()
+                .userId(userId)
+                .status(criteria.getStatus())
+                .fromDate(criteria.getFromDate())
+                .toDate(criteria.getToDate())
+                .build();
+        return searchOrders(effective, pageable);
+    }
+
+    public Page<OrderDto> searchAdminOrders(OrderSearchCriteria criteria, Pageable pageable) {
+        return searchOrders(criteria, pageable);
+    }
+
+    private Page<OrderDto> searchOrders(OrderSearchCriteria criteria, Pageable pageable) {
+        Specification<Order> spec = OrderSpecifications.from(criteria);
+        return orderRepository.findAll(spec, pageable).map(OrderDto::from);
     }
 
     public OrderDto getById(UUID userId, UUID orderId) {
@@ -150,6 +167,11 @@ public class OrderService {
         if (order.getStatus() != OrderStatus.PENDING) {
             throw new BusinessException(ErrorCode.ORDER_CANNOT_CANCEL);
         }
+
+        for (OrderItem item : order.getItems()) {
+            sellerProductRepository.restoreStock(item.getSellerProductId(), item.getQuantity());
+        }
+
         order.setStatus(OrderStatus.CANCELLED);
         return OrderDto.from(orderRepository.save(order));
     }

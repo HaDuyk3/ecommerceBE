@@ -36,12 +36,10 @@ public class AuthService {
             throw new BusinessException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
 
-        Role role = request.getRole() != null ? request.getRole() : Role.USER;
-
         User user = User.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(role)
+                .role(Role.USER)
                 .build();
 
         userRepository.save(user);

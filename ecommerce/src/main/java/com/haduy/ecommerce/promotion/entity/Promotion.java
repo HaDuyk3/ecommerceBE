@@ -1,6 +1,7 @@
 package com.haduy.ecommerce.promotion.entity;
 
 import com.haduy.ecommerce.common.entity.BaseEntity;
+import com.haduy.ecommerce.common.enums.PromotionStatus;
 import com.haduy.ecommerce.common.enums.PromotionType;
 import com.haduy.ecommerce.offer.entity.SellerProduct;
 import jakarta.persistence.*;

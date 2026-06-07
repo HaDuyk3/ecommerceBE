@@ -1,5 +1,6 @@
 package com.haduy.ecommerce.user.security;
 
+import com.haduy.ecommerce.common.enums.UserStatus;
 import com.haduy.ecommerce.user.entity.User;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
@@ -24,7 +25,7 @@ public class CustomUserDetails implements UserDetails {
         this.email = user.getEmail();
         this.password = user.getPassword();
         this.authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
-        this.enabled = user.getStatus().name().equals("ACTIVE");
+        this.enabled = user.getStatus() == UserStatus.ACTIVE;
     }
 
     @Override public String getUsername() { return email; }

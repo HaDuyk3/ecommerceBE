@@ -9,7 +9,12 @@ import com.haduy.ecommerce.promotion.dto.PromotionDto;
 import com.haduy.ecommerce.promotion.dto.PromotionRequest;
 import com.haduy.ecommerce.promotion.entity.Promotion;
 import com.haduy.ecommerce.promotion.repository.PromotionRepository;
+import com.haduy.ecommerce.promotion.dto.PromotionSearchCriteria;
+import com.haduy.ecommerce.promotion.spec.PromotionSpecifications;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -65,11 +70,16 @@ public class PromotionService {
         return PromotionDto.from(promotionRepository.save(promotion));
     }
 
-    public List<PromotionDto> getMyPromotions(UUID userId) {
-        return promotionRepository.findBySellerProductSellerUserId(userId)
-                .stream()
-                .map(PromotionDto::from)
-                .toList();
+    public Page<PromotionDto> searchMyPromotions(UUID userId,
+                                                 PromotionSearchCriteria criteria,
+                                                 Pageable pageable) {
+        PromotionSearchCriteria effective = PromotionSearchCriteria.builder()
+                .sellerUserId(userId)
+                .sellerProductId(criteria.getSellerProductId())
+                .lifecycle(criteria.getLifecycle())
+                .build();
+        Specification<Promotion> spec = PromotionSpecifications.from(effective);
+        return promotionRepository.findAll(spec, pageable).map(PromotionDto::from);
     }
 
     @Transactional
@@ -81,7 +91,14 @@ public class PromotionService {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
+        SellerProduct sp = promotion.getSellerProduct();
+        UUID sellerProductId = sp.getId();
         promotionRepository.delete(promotion);
+
+        BigDecimal effectivePrice = findActiveBySellerProductId(sellerProductId)
+                .map(p -> calculateEffectivePrice(sp.getBasePrice(), p.getType(), p.getValue()))
+                .orElse(sp.getBasePrice());
+        sellerProductService.updateEffectivePrice(sellerProductId, effectivePrice);
     }
 
     public java.util.Optional<Promotion> findActiveBySellerProductId(UUID sellerProductId) {

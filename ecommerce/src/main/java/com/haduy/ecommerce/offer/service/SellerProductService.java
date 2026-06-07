@@ -6,11 +6,17 @@ import com.haduy.ecommerce.offer.dto.SellerProductDto;
 import com.haduy.ecommerce.offer.dto.SellerProductRequest;
 import com.haduy.ecommerce.offer.entity.SellerProduct;
 import com.haduy.ecommerce.offer.repository.SellerProductRepository;
+import com.haduy.ecommerce.common.enums.ProductStatus;
 import com.haduy.ecommerce.product.entity.Product;
 import com.haduy.ecommerce.product.service.ProductService;
 import com.haduy.ecommerce.seller.entity.Seller;
 import com.haduy.ecommerce.seller.service.SellerService;
+import com.haduy.ecommerce.offer.dto.SellerProductSearchCriteria;
+import com.haduy.ecommerce.offer.spec.SellerProductSpecifications;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,7 +38,7 @@ public class SellerProductService {
         Seller seller = sellerService.findByUserIdOrThrow(userId);
         Product product = productService.findOrThrow(request.getProductId());
 
-        if (product.getStatus().name().equals("PENDING")) {
+        if (product.getStatus() == ProductStatus.PENDING) {
             throw new BusinessException(ErrorCode.PRODUCT_NOT_APPROVED);
         }
 
@@ -77,12 +83,18 @@ public class SellerProductService {
                 .toList();
     }
 
-    public List<SellerProductDto> getMyListings(UUID userId) {
+    public Page<SellerProductDto> searchMyListings(UUID userId,
+                                                   SellerProductSearchCriteria criteria,
+                                                   Pageable pageable) {
         Seller seller = sellerService.findByUserIdOrThrow(userId);
-        return sellerProductRepository.findBySellerId(seller.getId())
-                .stream()
-                .map(SellerProductDto::from)
-                .toList();
+        SellerProductSearchCriteria effective = SellerProductSearchCriteria.builder()
+                .sellerId(seller.getId())
+                .productId(criteria.getProductId())
+                .status(criteria.getStatus())
+                .inStock(criteria.getInStock())
+                .build();
+        Specification<SellerProduct> spec = SellerProductSpecifications.from(effective);
+        return sellerProductRepository.findAll(spec, pageable).map(SellerProductDto::from);
     }
 
     public void updateLowestPrice(UUID productId) {
@@ -96,5 +108,13 @@ public class SellerProductService {
     public SellerProduct findOrThrow(UUID id) {
         return sellerProductRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SELLER_PRODUCT_NOT_FOUND));
+    }
+
+    @Transactional
+    public void updateEffectivePrice(UUID sellerProductId, BigDecimal effectivePrice) {
+        SellerProduct sp = findOrThrow(sellerProductId);
+        sp.setEffectivePrice(effectivePrice);
+        sellerProductRepository.save(sp);
+        updateLowestPrice(sp.getProduct().getId());
     }
 }

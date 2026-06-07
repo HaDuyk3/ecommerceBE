@@ -10,7 +10,12 @@ import com.haduy.ecommerce.user.entity.User;
 import com.haduy.ecommerce.user.entity.UserAddress;
 import com.haduy.ecommerce.user.repository.UserAddressRepository;
 import com.haduy.ecommerce.user.repository.UserRepository;
+import com.haduy.ecommerce.user.dto.UserSearchCriteria;
+import com.haduy.ecommerce.user.spec.UserSpecifications;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +33,11 @@ public class UserService {
 
     public UserDto getById(UUID id) {
         return UserDto.from(findOrThrow(id));
+    }
+
+    public Page<UserDto> searchAdmin(UserSearchCriteria criteria, Pageable pageable) {
+        Specification<User> spec = UserSpecifications.from(criteria);
+        return userRepository.findAll(spec, pageable).map(UserDto::from);
     }
 
     @Transactional

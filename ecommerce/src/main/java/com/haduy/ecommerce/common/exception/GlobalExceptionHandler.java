@@ -20,10 +20,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException ex) {
-        log.warn("Business error: {}", ex.getMessage());
+        log.warn("Business error [{}]: {}", ex.getErrorCode(), ex.getMessage());
         return ResponseEntity
                 .status(ex.getErrorCode().getHttpStatus())
-                .body(ApiResponse.error(ex.getMessage()));
+                .body(ApiResponse.error(ex.getErrorCode(), ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -35,7 +35,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest()
                 .body(ApiResponse.<Map<String, String>>builder()
                         .success(false)
-                        .message("Dữ liệu không hợp lệ")
+                        .errorCode(ErrorCode.VALIDATION_ERROR.name())
+                        .message(ErrorCode.VALIDATION_ERROR.getMessage())
                         .data(errors)
                         .build());
     }
@@ -45,21 +46,22 @@ public class GlobalExceptionHandler {
         log.warn("Optimistic locking failure: {}", ex.getMessage());
         return ResponseEntity
                 .status(ErrorCode.OUT_OF_STOCK.getHttpStatus())
-                .body(ApiResponse.error("Có xung đột dữ liệu, vui lòng thử lại"));
+                .body(ApiResponse.error(ErrorCode.OUT_OF_STOCK,
+                        "Có xung đột dữ liệu, vui lòng thử lại"));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
         return ResponseEntity
                 .status(ErrorCode.FORBIDDEN.getHttpStatus())
-                .body(ApiResponse.error(ErrorCode.FORBIDDEN.getMessage()));
+                .body(ApiResponse.error(ErrorCode.FORBIDDEN));
     }
 
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Void>> handleBadCredentials(BadCredentialsException ex) {
         return ResponseEntity
                 .status(ErrorCode.INVALID_CREDENTIALS.getHttpStatus())
-                .body(ApiResponse.error(ErrorCode.INVALID_CREDENTIALS.getMessage()));
+                .body(ApiResponse.error(ErrorCode.INVALID_CREDENTIALS));
     }
 
     @ExceptionHandler(Exception.class)
@@ -67,6 +69,6 @@ public class GlobalExceptionHandler {
         log.error("Unexpected error", ex);
         return ResponseEntity
                 .status(ErrorCode.INTERNAL_ERROR.getHttpStatus())
-                .body(ApiResponse.error(ErrorCode.INTERNAL_ERROR.getMessage()));
+                .body(ApiResponse.error(ErrorCode.INTERNAL_ERROR));
     }
 }
