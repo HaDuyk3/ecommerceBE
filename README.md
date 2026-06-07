@@ -7,12 +7,13 @@ Backend RESTful cho hệ thống thương mại điện tử đa người bán (
 - **Xác thực & phân quyền:** đăng ký, đăng nhập, refresh token (JWT). Ba vai trò: USER, SELLER, ADMIN.
 - **Người bán (Seller):** đăng ký gian hàng, đăng bán sản phẩm với giá và tồn kho riêng.
 - **Sản phẩm:** thông tin sản phẩm chung + nhiều người bán gắn giá/kho riêng (mô hình catalog dùng chung).
+- **Tìm kiếm & lọc nâng cao:** tìm kiếm theo từ khóa, lọc theo nhiều tiêu chí (giá, trạng thái, danh mục...) với JPA Specifications trên sản phẩm, đơn hàng, khuyến mãi, người dùng.
 - **Giỏ hàng:** thêm, sửa số lượng, xóa item, xem giỏ với giá tính theo thời gian thực.
 - **Đặt hàng:** đặt hàng từ giỏ, trừ kho an toàn (atomic), lưu snapshot giá và địa chỉ tại thời điểm đặt.
 - **Thanh toán:** khởi tạo thanh toán và xử lý callback từ cổng thanh toán (giả lập).
-- **Khuyến mãi:** người bán tạo mã giảm giá áp cho sản phẩm.
-- **Đánh giá:** người mua đánh giá sản phẩm sau khi mua.
-- **Quản trị (Admin):** duyệt sản phẩm, khóa/mở khóa tài khoản người dùng.
+- **Khuyến mãi:** người bán tạo mã giảm giá áp cho sản phẩm, quản lý vòng đời khuyến mãi.
+- **Đánh giá:** người mua đánh giá sản phẩm sau khi mua; rating sản phẩm được tự động cập nhật.
+- **Quản trị (Admin):** duyệt/từ chối sản phẩm, khóa/mở khóa tài khoản, quản lý đơn hàng và tìm kiếm toàn hệ thống.
 
 ## Công nghệ
 
@@ -67,16 +68,26 @@ src/main/java/com/haduy/ecommerce/
    CREATE DATABASE ecommerce CHARACTER SET utf8mb4;
    ```
 
-2. Đặt 2 biến môi trường (kết nối MySQL và khóa ký JWT):
+2. Cấu hình secret (chọn 1 trong 2 cách):
+
+   **Cách A — file local (khuyến nghị cho dev):** sao chép file mẫu rồi điền giá trị thật:
+   ```bash
+   cp ecommerce/src/main/resources/application-local.properties.example \
+      ecommerce/src/main/resources/application-local.properties
+   ```
+   Mở file vừa tạo và điền `spring.datasource.password` và `jwt.secret`. File này đã được gitignore, không lo bị commit lên git.
+
+   **Cách B — biến môi trường:**
    ```bash
    # Linux / macOS
    export DB_PASSWORD=mat_khau_mysql_cua_ban
-   export JWT_SECRET=mot_chuoi_bi_mat_du_dai_de_ky_jwt
+   export JWT_SECRET=mot_chuoi_base64_du_dai
 
    # Windows PowerShell
    $env:DB_PASSWORD="mat_khau_mysql_cua_ban"
-   $env:JWT_SECRET="mot_chuoi_bi_mat_du_dai_de_ky_jwt"
+   $env:JWT_SECRET="mot_chuoi_base64_du_dai"
    ```
+   Để tạo JWT_SECRET ngẫu nhiên: `openssl rand -base64 64`
 
 3. Chạy ứng dụng:
    ```bash
@@ -136,10 +147,25 @@ src/main/java/com/haduy/ecommerce/
 | POST | `/api/payments/init` | Khởi tạo thanh toán |
 | POST | `/api/payments/callback` | Callback từ cổng thanh toán |
 
-### Khác
-- Đánh giá: `POST /api/reviews`, `GET /api/products/{productId}/reviews`
-- Khuyến mãi (SELLER): `/api/seller/promotions`
-- Quản trị (ADMIN): duyệt sản phẩm, khóa/mở tài khoản
+### Đánh giá & Khuyến mãi
+| Method | Endpoint | Mô tả |
+|---|---|---|
+| POST | `/api/reviews` | Đánh giá sản phẩm (USER) |
+| GET | `/api/products/{productId}/reviews` | Xem đánh giá của sản phẩm |
+| POST | `/api/seller/promotions` | Tạo mã khuyến mãi (SELLER) |
+| GET | `/api/seller/promotions` | Danh sách khuyến mãi của seller |
+| DELETE | `/api/seller/promotions/{id}` | Xóa khuyến mãi (SELLER) |
+
+### Quản trị — `/api/admin` (ADMIN)
+| Method | Endpoint | Mô tả |
+|---|---|---|
+| GET | `/api/admin/products` | Danh sách sản phẩm (có filter) |
+| PATCH | `/api/admin/products/{id}/approve` | Duyệt sản phẩm |
+| GET | `/api/admin/orders` | Danh sách đơn hàng (có filter) |
+| GET | `/api/admin/users` | Danh sách người dùng (có filter) |
+| GET | `/api/admin/users/{id}` | Chi tiết người dùng |
+| PATCH | `/api/admin/users/{id}/ban` | Khóa tài khoản |
+| PATCH | `/api/admin/users/{id}/activate` | Mở khóa tài khoản |
 
 ## Ghi chú
 
