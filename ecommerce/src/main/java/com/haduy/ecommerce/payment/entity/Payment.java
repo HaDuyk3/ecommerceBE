@@ -33,6 +33,9 @@ public class Payment extends BaseEntity {
 
     private String providerRef;
 
+    @Column(length = 1024)
+    private String paymentUrl;
+
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal amount;
 

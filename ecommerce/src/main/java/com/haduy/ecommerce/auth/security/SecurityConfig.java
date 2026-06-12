@@ -27,7 +27,9 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_URLS = {
             "/api/auth/**",
-            "/api/payments/callback",
+            "/api/payments/callback/vnpay",   // gateway IPN — verified by signature
+            "/api/payments/callback/momo",    // gateway IPN — verified by signature
+            "/api/payments/callback/dev",     // dev/simulation only
             "/swagger-ui/**",
             "/v3/api-docs/**"
     };

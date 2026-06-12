@@ -49,6 +49,14 @@ public class CartController {
             @AuthenticationPrincipal CustomUserDetails userDetails,
             @PathVariable UUID id) {
         cartService.removeItem(userDetails.getId(), id);
-        return ResponseEntity.ok(ApiResponse.success("Đã xóa sản phẩm khỏi giỏ"));
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @PostMapping("/items/{id}/accept-price")
+    public ResponseEntity<ApiResponse<CartDto>> acceptPrice(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                cartService.acceptPrice(userDetails.getId(), id)));
     }
 }

@@ -49,13 +49,13 @@ public class AdminUserController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> ban(@PathVariable UUID id) {
         userService.ban(id);
-        return ResponseEntity.ok(ApiResponse.success("Đã khóa tài khoản"));
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 
     @PatchMapping("/{id}/activate")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Void>> activate(@PathVariable UUID id) {
         userService.activate(id);
-        return ResponseEntity.ok(ApiResponse.success("Đã kích hoạt tài khoản"));
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

@@ -35,8 +35,9 @@ public enum ErrorCode {
     PROMOTION_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy khuyến mãi"),
 
     // Cart
-    CART_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy giỏ hàng"),
-    CART_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy sản phẩm trong giỏ"),
+    CART_NOT_FOUND(HttpStatus.NOT_FOUND, "Cart not found"),
+    CART_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "Cart item not found"),
+    CART_PRICE_CHANGED(HttpStatus.CONFLICT, "One or more cart items have a price change — please review before checkout"),
 
     // Order
     ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy đơn hàng"),
@@ -44,8 +45,11 @@ public enum ErrorCode {
     OUT_OF_STOCK(HttpStatus.CONFLICT, "Sản phẩm không đủ hàng"),
 
     // Payment
-    PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Không tìm thấy thanh toán"),
-    PAYMENT_ALREADY_EXISTS(HttpStatus.CONFLICT, "Đơn hàng đã có thanh toán"),
+    PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "Payment not found"),
+    PAYMENT_ALREADY_EXISTS(HttpStatus.CONFLICT, "Order already has a payment"),
+    PAYMENT_IN_PROGRESS(HttpStatus.CONFLICT, "A payment for this order is already in progress"),
+    PAYMENT_SIGNATURE_INVALID(HttpStatus.BAD_REQUEST, "Payment callback signature is invalid"),
+    PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "Callback amount does not match order amount"),
 
     // Review
     DUPLICATE_REVIEW(HttpStatus.CONFLICT, "Sản phẩm này đã được đánh giá"),

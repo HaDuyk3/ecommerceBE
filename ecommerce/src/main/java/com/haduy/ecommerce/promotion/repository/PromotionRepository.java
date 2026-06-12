@@ -28,4 +28,7 @@ public interface PromotionRepository extends JpaRepository<Promotion, UUID>,
             @Param("sellerProductId") UUID sellerProductId,
             @Param("startAt") Instant startAt,
             @Param("endAt") Instant endAt);
+
+    @Query("SELECT p FROM Promotion p WHERE p.status = 'ACTIVE' AND p.endAt < :now")
+    List<Promotion> findExpiredActive(@Param("now") Instant now);
 }

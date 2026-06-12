@@ -16,4 +16,5 @@ public class CartDto {
     private BigDecimal shippingFee;
     private BigDecimal shippingDiscount;
     private BigDecimal totalAmount;
+    private boolean canCheckout;
 }

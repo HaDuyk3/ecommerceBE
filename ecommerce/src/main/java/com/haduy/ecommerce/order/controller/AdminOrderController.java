@@ -25,6 +25,15 @@ public class AdminOrderController {
 
     private final OrderService orderService;
 
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<OrderDto>> updateStatus(
+            @PathVariable UUID id,
+            @RequestParam OrderStatus status) {
+        return ResponseEntity.ok(ApiResponse.success(
+                orderService.adminUpdateStatus(id, status)));
+    }
+
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<Page<OrderDto>>> search(

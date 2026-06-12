@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,9 +28,12 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserService {
 
+    private static final String REFRESH_TOKEN_PREFIX = "refresh_token:";
+
     private final UserRepository userRepository;
     private final UserAddressRepository addressRepository;
     private final PasswordEncoder passwordEncoder;
+    private final StringRedisTemplate redisTemplate;
 
     public UserDto getById(UUID id) {
         return UserDto.from(findOrThrow(id));
@@ -55,6 +59,8 @@ public class UserService {
         User user = findOrThrow(userId);
         user.setStatus(UserStatus.BANNED);
         userRepository.save(user);
+        // Invalidate any existing refresh token so the ban takes effect immediately (T4.3)
+        redisTemplate.delete(REFRESH_TOKEN_PREFIX + user.getEmail());
     }
 
     @Transactional

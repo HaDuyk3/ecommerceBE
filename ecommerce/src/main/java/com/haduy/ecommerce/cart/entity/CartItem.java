@@ -37,4 +37,8 @@ public class CartItem {
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal snapshotShipping;
+
+    @Column(nullable = false, precision = 19, scale = 2)
+    @Builder.Default
+    private BigDecimal snapshotShippingDiscount = java.math.BigDecimal.ZERO;
 }

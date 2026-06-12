@@ -7,6 +7,7 @@ import com.haduy.ecommerce.user.entity.User;
 import com.haduy.ecommerce.user.repository.UserRepository;
 import com.haduy.ecommerce.auth.security.JwtTokenProvider;
 import com.haduy.ecommerce.common.enums.Role;
+import com.haduy.ecommerce.common.enums.UserStatus;
 import com.haduy.ecommerce.common.exception.BusinessException;
 import com.haduy.ecommerce.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -52,6 +53,10 @@ public class AuthService {
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+        }
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.USER_BANNED);
         }
 
         return generateTokenPair(user);

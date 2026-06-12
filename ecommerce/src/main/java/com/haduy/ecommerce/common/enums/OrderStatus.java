@@ -2,6 +2,10 @@ package com.haduy.ecommerce.common.enums;
 
 public enum OrderStatus {
     PENDING,
+    CONFIRMED,   // COD: confirmed, awaiting delivery
     PAID,
-    CANCELLED
+    SHIPPED,
+    DELIVERED,
+    CANCELLED,
+    REFUNDED
 }

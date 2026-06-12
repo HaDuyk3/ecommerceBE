@@ -36,7 +36,7 @@ public class ReviewService {
         }
 
         Order order = findOrderByOrderItemId(userId, request.getOrderItemId());
-        if (order.getStatus() != OrderStatus.PAID) {
+        if (order.getStatus() != OrderStatus.DELIVERED) {
             throw new BusinessException(ErrorCode.REVIEW_NOT_ALLOWED);
         }
 

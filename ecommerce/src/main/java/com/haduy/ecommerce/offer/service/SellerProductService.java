@@ -9,6 +9,7 @@ import com.haduy.ecommerce.offer.repository.SellerProductRepository;
 import com.haduy.ecommerce.common.enums.ProductStatus;
 import com.haduy.ecommerce.product.entity.Product;
 import com.haduy.ecommerce.product.service.ProductService;
+import com.haduy.ecommerce.promotion.repository.PromotionRepository;
 import com.haduy.ecommerce.seller.entity.Seller;
 import com.haduy.ecommerce.seller.service.SellerService;
 import com.haduy.ecommerce.offer.dto.SellerProductSearchCriteria;
@@ -21,6 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -32,6 +35,7 @@ public class SellerProductService {
     private final SellerProductRepository sellerProductRepository;
     private final SellerService sellerService;
     private final ProductService productService;
+    private final PromotionRepository promotionRepository;
 
     @Transactional
     public SellerProductDto create(UUID userId, SellerProductRequest request) {
@@ -67,9 +71,15 @@ public class SellerProductService {
         }
 
         sp.setBasePrice(request.getBasePrice());
-        sp.setEffectivePrice(request.getBasePrice());
         sp.setStock(request.getStock());
         sp.setBaseShippingFee(request.getBaseShippingFee());
+
+        // Recalc effectivePrice from any active promotion — don't overwrite with basePrice (T2.3)
+        BigDecimal newEffective = promotionRepository
+                .findActiveBySellerProductId(sp.getId(), Instant.now())
+                .map(p -> applyPromotion(request.getBasePrice(), p.getType(), p.getValue()))
+                .orElse(request.getBasePrice());
+        sp.setEffectivePrice(newEffective);
 
         SellerProduct saved = sellerProductRepository.save(sp);
         updateLowestPrice(sp.getProduct().getId());
@@ -116,5 +126,19 @@ public class SellerProductService {
         sp.setEffectivePrice(effectivePrice);
         sellerProductRepository.save(sp);
         updateLowestPrice(sp.getProduct().getId());
+    }
+
+    public BigDecimal applyPromotion(BigDecimal basePrice,
+                                     com.haduy.ecommerce.common.enums.PromotionType type,
+                                     BigDecimal value) {
+        return switch (type) {
+            case PERCENT -> basePrice.multiply(
+                            BigDecimal.ONE.subtract(
+                                    value.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP)))
+                    .setScale(2, RoundingMode.HALF_UP);
+            case FIXED -> basePrice.subtract(value)
+                    .max(BigDecimal.ZERO)
+                    .setScale(2, RoundingMode.HALF_UP);
+        };
     }
 }

@@ -5,6 +5,7 @@ import com.haduy.ecommerce.cart.dto.CartItemDto;
 import com.haduy.ecommerce.cart.dto.CartItemRequest;
 import com.haduy.ecommerce.cart.entity.Cart;
 import com.haduy.ecommerce.cart.entity.CartItem;
+import com.haduy.ecommerce.cart.enums.CartItemStatus;
 import com.haduy.ecommerce.cart.repository.CartItemRepository;
 import com.haduy.ecommerce.cart.repository.CartRepository;
 import com.haduy.ecommerce.common.exception.BusinessException;
@@ -33,10 +34,10 @@ public class CartService {
     private final PricingService pricingService;
     private final UserService userService;
 
+    // Read-only: flags price changes but does NOT write to DB (T2.1)
     public CartDto getCart(UUID userId) {
         Cart cart = getOrCreateCart(userId);
-        User user = userService.findOrThrow(userId);
-        return buildCartDto(cart, user);
+        return buildCartDto(cart);
     }
 
     @Transactional
@@ -45,16 +46,13 @@ public class CartService {
         User user = userService.findOrThrow(userId);
         SellerProduct sp = sellerProductService.findOrThrow(request.getSellerProductId());
 
-        // Tính giá realtime
         PricingResult pricing = pricingService.calculate(sp, request.getQuantity(), user);
 
-        // Nếu item đã có trong giỏ thì cộng thêm quantity
         cartItemRepository.findByCartIdAndSellerProductId(cart.getId(), sp.getId())
                 .ifPresentOrElse(
                         existing -> {
                             existing.setQuantity(existing.getQuantity() + request.getQuantity());
-                            existing.setSnapshotPrice(sp.getEffectivePrice());
-                            existing.setSnapshotShipping(pricing.getShippingFee());
+                            snapshotFrom(existing, sp, pricing);
                             cartItemRepository.save(existing);
                         },
                         () -> {
@@ -64,12 +62,13 @@ public class CartService {
                                     .quantity(request.getQuantity())
                                     .snapshotPrice(sp.getEffectivePrice())
                                     .snapshotShipping(pricing.getShippingFee())
+                                    .snapshotShippingDiscount(pricing.getShippingDiscount())
                                     .build();
                             cartItemRepository.save(item);
                         }
                 );
 
-        return buildCartDto(cartRepository.findByUserId(userId).orElseThrow(), user);
+        return buildCartDto(cartRepository.findByUserId(userId).orElseThrow());
     }
 
     @Transactional
@@ -90,12 +89,11 @@ public class CartService {
             PricingResult pricing = pricingService.calculate(
                     item.getSellerProduct(), quantity, user);
             item.setQuantity(quantity);
-            item.setSnapshotPrice(item.getSellerProduct().getEffectivePrice());
-            item.setSnapshotShipping(pricing.getShippingFee());
+            snapshotFrom(item, item.getSellerProduct(), pricing);
             cartItemRepository.save(item);
         }
 
-        return buildCartDto(cartRepository.findByUserId(userId).orElseThrow(), user);
+        return buildCartDto(cartRepository.findByUserId(userId).orElseThrow());
     }
 
     @Transactional
@@ -110,6 +108,27 @@ public class CartService {
         cartItemRepository.delete(item);
     }
 
+    // Refreshes snapshot of one item to current live price (T2.2)
+    @Transactional
+    public CartDto acceptPrice(UUID userId, UUID cartItemId) {
+        Cart cart = getOrCreateCart(userId);
+        User user = userService.findOrThrow(userId);
+
+        CartItem item = cartItemRepository.findById(cartItemId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND));
+
+        if (!item.getCart().getId().equals(cart.getId())) {
+            throw new BusinessException(ErrorCode.FORBIDDEN);
+        }
+
+        PricingResult pricing = pricingService.calculate(
+                item.getSellerProduct(), item.getQuantity(), user);
+        snapshotFrom(item, item.getSellerProduct(), pricing);
+        cartItemRepository.save(item);
+
+        return buildCartDto(cartRepository.findByUserId(userId).orElseThrow());
+    }
+
     public Cart getOrCreateCart(UUID userId) {
         return cartRepository.findByUserId(userId).orElseGet(() -> {
             User user = userService.findOrThrow(userId);
@@ -118,14 +137,14 @@ public class CartService {
         });
     }
 
-    private CartDto buildCartDto(Cart cart, User user) {
+    // All totals from snapshot only — no live pricing calls (T2.1 fix)
+    private CartDto buildCartDto(Cart cart) {
         List<CartItemDto> items = cart.getItems().stream()
                 .map(CartItemDto::from)
                 .toList();
 
         BigDecimal subtotal = items.stream()
-                .map(i -> i.getSnapshotPrice()
-                        .multiply(BigDecimal.valueOf(i.getQuantity())))
+                .map(i -> i.getSnapshotPrice().multiply(BigDecimal.valueOf(i.getQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal shippingFee = items.stream()
@@ -133,18 +152,13 @@ public class CartService {
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal shippingDiscount = items.stream()
-                .map(item -> {
-                    SellerProduct sp = sellerProductService
-                            .findOrThrow(item.getSellerProductId());
-                    PricingResult pricing = pricingService.calculate(
-                            sp, item.getQuantity(), user);
-                    return pricing.getShippingDiscount();
-                })
+                .map(CartItemDto::getSnapshotShippingDiscount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalAmount = subtotal
-                .add(shippingFee)
-                .subtract(shippingDiscount);
+        BigDecimal totalAmount = subtotal.add(shippingFee).subtract(shippingDiscount);
+
+        boolean canCheckout = items.stream()
+                .allMatch(i -> i.getStatus() == CartItemStatus.OK);
 
         return CartDto.builder()
                 .cartId(cart.getId())
@@ -153,6 +167,13 @@ public class CartService {
                 .shippingFee(shippingFee)
                 .shippingDiscount(shippingDiscount)
                 .totalAmount(totalAmount)
+                .canCheckout(canCheckout)
                 .build();
+    }
+
+    private void snapshotFrom(CartItem item, SellerProduct sp, PricingResult pricing) {
+        item.setSnapshotPrice(sp.getEffectivePrice());
+        item.setSnapshotShipping(pricing.getShippingFee());
+        item.setSnapshotShippingDiscount(pricing.getShippingDiscount());
     }
 }
